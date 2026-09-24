@@ -1,7 +1,59 @@
 #include "metrics.h"
 
+#include <fstream>
 #include <utility>
 
+bool write_metrics_header(const std::string& path)
+{
+    std::ofstream out(path, std::ios::out | std::ios::trunc);
+
+    if (!out) {
+        return false;
+    }
+
+    out << "request_id,op,total_bytes,arrival_ns,start_ns,finish_ns,rounds,forfeited_bytes,latency_ns,service_time_ns\n";
+
+    return out.good();
+}
+
+bool append_metric(const std::string& path, const Request& request)
+{
+    std::ofstream out(path, std::ios::out | std::ios::app);
+
+    if (!out) {
+        return false;
+    }
+
+    const std::uint64_t latency_ns =
+        (request.finish_ns >= request.arrival_ns)
+            ? (request.finish_ns - request.arrival_ns)
+            : 0;
+
+    const std::uint64_t service_time_ns =
+        (request.finish_ns >= request.start_ns)
+            ? (request.finish_ns - request.start_ns)
+            : 0;
+
+    const char* op_name = "UNKNOWN";
+    switch (request.op) {
+        case Operation::GET: op_name = "GET"; break;
+        case Operation::PUT: op_name = "PUT"; break;
+        case Operation::HEALTH: op_name = "HEALTH"; break;
+    }
+
+    out << request.request_id << ','
+        << op_name << ','
+        << request.total_bytes << ','
+        << request.arrival_ns << ','
+        << request.start_ns << ','
+        << request.finish_ns << ','
+        << request.rounds << ','
+        << request.forfeited_bytes << ','
+        << latency_ns << ','
+        << service_time_ns << '\n';
+
+    return out.good();
+}
 
 void Metrics::record(const Request& request)
 {

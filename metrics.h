@@ -27,6 +27,9 @@ struct RequestMetrics {
     std::uint64_t service_time_ns = 0;
 };
 
+bool write_metrics_header(const std::string& path);
+
+bool append_metric(const std::string& path, const Request& request);
 
 class Metrics {
 public:
