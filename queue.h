@@ -12,7 +12,8 @@
 
 enum class Operation {
     GET,
-    PUT
+    PUT,
+    HEALTH
 };
 
 struct Request {
@@ -36,6 +37,7 @@ struct Request {
 
     std::vector<char> pending_bytes;
     std::size_t pending_offset = 0;
+    bool response_sent = false;
 };
 
 class RequestQueue {
