@@ -42,12 +42,6 @@ bool serve_get(
     if (!req.response_sent) {
         send_response(req.client_fd, file_size);
         req.response_sent = true;
-
-        std::cout
-            << "  GET response: "
-            << file_size
-            << " bytes"
-            << std::endl;
     }
 
     if (req.offset >= file_size || budget == 0) {
@@ -83,10 +77,8 @@ bool serve_get(
             static_cast<std::size_t>(req.offset);
 
         while (round_bytes < budget) {
-            std::string line =
-                read_file_line(filepath, line_offset);
-
-            if (line.empty()) {
+            std::string line;
+            if (!read_file_line(filepath, line_offset, line)) {
                 break;
             }
 
@@ -101,6 +93,7 @@ bool serve_get(
             if (round_bytes == 0 && line_size > budget) {
                 if (allow_long_line_overrun) {
                     round_bytes = line_size;
+                    ++req.a14_events;
                 }
 
                 break;
@@ -121,15 +114,6 @@ bool serve_get(
      * DRR may need several rounds before a long line fits.
      */
     if (round_bytes == 0) {
-        std::cout
-            << "  No complete line fits this round"
-            << " (offset "
-            << req.offset
-            << "/"
-            << file_size
-            << ")"
-            << std::endl;
-
         return true;
     }
 
@@ -174,10 +158,8 @@ bool serve_get(
                    static_cast<std::size_t>(packetization) &&
                remaining_round > 0) {
 
-            std::string line =
-                read_file_line(filepath, line_offset);
-
-            if (line.empty()) {
+            std::string line;
+            if (!read_file_line(filepath, line_offset, line)) {
                 file.close();
                 send_error(req.client_fd, "file read error");
                 return false;
@@ -219,13 +201,6 @@ bool serve_get(
     }
 
     file.close();
-
-    std::cout
-        << "  Sent " << bytes_processed << " bytes this round"
-        << " (offset " << req.offset + bytes_processed
-        << "/" << file_size << ")"
-        << std::endl;
-
     return true;
 }
 
@@ -243,17 +218,6 @@ bool serve_put(
     }
 
     const std::string filepath = file_dir + "/" + req.filename;
-
-    std::cout
-        << "  PUT request: "
-        << req.total_bytes
-        << " bytes incoming"
-        << std::endl;
-
-    std::cout
-        << "  Saving to: "
-        << filepath
-        << std::endl;
 
     // A zero-byte PUT is valid.
     if (req.total_bytes == 0) {
@@ -305,12 +269,39 @@ bool serve_put(
         std::min(budget, remaining);
 
     const std::size_t CHUNK_SIZE = 8192;
-
     std::vector<char> buffer(
         std::min<std::uint64_t>(CHUNK_SIZE, to_receive)
     );
 
     std::uint64_t remaining_round = to_receive;
+
+    while (remaining_round > 0 &&
+           req.pending_offset < req.pending_bytes.size()) {
+
+        const std::size_t available =
+            req.pending_bytes.size() - req.pending_offset;
+        const std::size_t chunk =
+            static_cast<std::size_t>(
+                std::min<std::uint64_t>(
+                    remaining_round,
+                    available
+                )
+            );
+
+        file.write(
+            req.pending_bytes.data() + req.pending_offset,
+            static_cast<std::streamsize>(chunk)
+        );
+        if (!file.good()) {
+            file.close();
+            send_error(req.client_fd, "file write error");
+            return false;
+        }
+
+        req.pending_offset += chunk;
+        bytes_processed += static_cast<std::uint64_t>(chunk);
+        remaining_round -= static_cast<std::uint64_t>(chunk);
+    }
 
     while (remaining_round > 0) {
         const std::size_t chunk =
@@ -360,17 +351,5 @@ bool serve_put(
     }
 
     file.close();
-
-    std::cout
-        << "  Received "
-        << bytes_processed
-        << " bytes this round"
-        << " (offset "
-        << req.offset + bytes_processed
-        << "/"
-        << req.total_bytes
-        << ")"
-        << std::endl;
-
     return true;
 }

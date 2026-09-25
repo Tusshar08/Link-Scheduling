@@ -53,22 +53,25 @@ std::vector<uint8_t> read_file_chunk(const std::string& filepath,
     return buffer;
 }
 
-std::string read_file_line(const std::string& filepath, size_t& offset) {
-    std::ifstream file(filepath);
+bool read_file_line(
+    const std::string& filepath,
+    size_t& offset,
+    std::string& line) {
+    std::ifstream file(filepath, std::ios::binary);
     if (!file.is_open()) {
-        return "";
+        return false;
     }
 
     file.seekg(static_cast<std::streamoff>(offset));
 
     if (!file.good()) {
-        return "";
+        return false;
     }
 
-    std::string line;
+    line.clear();
 
     if (!std::getline(file, line)) {
-        return "";
+        return false;
     }
 
     std::streampos new_position = file.tellg();
@@ -86,7 +89,7 @@ std::string read_file_line(const std::string& filepath, size_t& offset) {
         line += '\n';
     }
 
-    return line;
+    return true;
 }
 
 bool write_file_data(const std::string& filepath, const std::vector<uint8_t>& data) {

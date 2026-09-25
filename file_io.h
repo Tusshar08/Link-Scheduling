@@ -15,8 +15,12 @@ std::vector<uint8_t> read_file_chunk(const std::string& filepath,
                                      size_t offset, 
                                      size_t bytes);
 
-// Read line from file (for GET with line boundaries)
-std::string read_file_line(const std::string& filepath, size_t& offset);
+// Read one line from a file (for GET with line boundaries).
+// Returns false only when no line remains or the file cannot be read.
+bool read_file_line(
+    const std::string& filepath,
+    size_t& offset,
+    std::string& line);
 
 // Write data to file
 bool write_file_data(const std::string& filepath, const std::vector<uint8_t>& data);

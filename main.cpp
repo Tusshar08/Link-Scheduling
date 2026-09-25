@@ -1,23 +1,24 @@
-#include <iostream>
-#include <cstring>
-#include <thread>
-#include <csignal>
-#include <vector>
-#include <mutex>
-#include <chrono>
 #include <algorithm>
+#include <atomic>
+#include <csignal>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
 #include <stdexcept>
+#include <string>
 #include <sys/socket.h>
+#include <thread>
+#include <vector>
 
+#include "clock_ns.h"
 #include "config.h"
-#include "socket.h"
-#include "protocol.h"
-#include "request.h"
 #include "file_io.h"
-#include "server.h"
+#include "metrics.h"
+#include "protocol.h"
 #include "queue.h"
 #include "scheduling.h"
-#include "metrics.h"
+#include "server.h"
+#include "socket.h"
 
 volatile std::sig_atomic_t shutdown_flag = 0;
 int global_listen_socket = -1;
@@ -26,317 +27,136 @@ void handle_signal(int signal)
 {
     if (signal == SIGINT || signal == SIGTERM) {
         shutdown_flag = 1;
-
         if (global_listen_socket >= 0) {
             shutdown(global_listen_socket, SHUT_RDWR);
         }
     }
 }
 
-
-// Convert command-line scheduling policy to Scheduler enum.
 SchedulingPolicy parse_scheduling_policy(const std::string& policy)
 {
     if (policy == "fcfs") {
         return SchedulingPolicy::FCFS;
     }
-
     if (policy == "sjf") {
         return SchedulingPolicy::SJF;
     }
-
     if (policy == "rr") {
         return SchedulingPolicy::RR;
     }
-
     if (policy == "drr") {
         return SchedulingPolicy::DRR;
     }
-
-    throw std::runtime_error(
-        "invalid scheduling policy: " + policy
-    );
+    throw std::runtime_error("invalid scheduling policy: " + policy);
 }
 
-
-// Convert Operation enum to readable text.
-const char* operation_name(Operation op)
-{
-    switch (op) {
-        case Operation::GET:
-            return "GET";
-
-        case Operation::PUT:
-            return "PUT";
-
-        case Operation::HEALTH:
-            return "HEALTH";
-    }
-
-    return "UNKNOWN";
-}
-
-
-// ------------------------------------------------------------
-// Acceptor thread
-// ------------------------------------------------------------
-// The acceptor ONLY:
-//   1. accepts connections
-//   2. reads/parses request headers
-//   3. handles HEALTH immediately
-//   4. validates GET/PUT
-//   5. puts GET/PUT requests into the queue
-//
-// It does NOT perform file transfer.
-// ------------------------------------------------------------
-void acceptor_thread(
-    int listen_socket,
+void parser_thread(
+    FdQueue& fd_queue,
+    RequestQueue& request_queue,
     const std::string& file_dir,
-    RequestQueue& request_queue)
+    std::atomic<int>& next_request_id)
 {
-    int request_id = 0;
+    int client_socket = -1;
 
-    while (!shutdown_flag) {
-
-        int client_socket = accept_connection(listen_socket);
-
-        if (client_socket < 0) {
-            if (shutdown_flag) {
-                break;
-            }
-
-            continue;
-        }
-
-        // Read request header with a 1-second timeout.
-        std::string header =
-            read_header_line(client_socket, 1000);
+    while (fd_queue.wait_pop(client_socket)) {
+        std::vector<char> leftover;
+        const std::string header =
+            read_header_line(client_socket, 1000, leftover);
 
         if (header.empty()) {
-            send_error(
-                client_socket,
-                "timeout or invalid request"
-            );
-
+            send_error(client_socket, "timeout or invalid request");
             close_socket(client_socket);
             continue;
         }
 
         try {
-            Request req =
-                parse_request_header(
-                    header,
-                    client_socket
-                );
+            Request req = parse_request_header(header, client_socket);
+            req.pending_bytes = std::move(leftover);
 
-            req.request_id = ++request_id;
-
-            std::cout
-                << "Request "
-                << req.request_id
-                << ": "
-                << operation_name(req.op)
-                << " "
-                << req.filename
-                << std::endl;
-
-
-            // ------------------------------------------------
-            // HEALTH
-            // ------------------------------------------------
             if (req.op == Operation::HEALTH) {
-
                 send_response(client_socket, request_queue.size());
-
-                std::cout
-                    << "  HEALTH check"
-                    << std::endl;
-
                 close_socket(client_socket);
                 continue;
             }
 
-
-            // ------------------------------------------------
-            // Validate filename
-            // ------------------------------------------------
             if (!is_valid_filename(req.filename)) {
-
-                send_error(
-                    client_socket,
-                    "invalid filename"
-                );
-
+                send_error(client_socket, "invalid filename");
                 close_socket(client_socket);
                 continue;
             }
 
-
-            // ------------------------------------------------
-            // GET
-            // ------------------------------------------------
             if (req.op == Operation::GET) {
-
-                std::string file_path =
-                    file_dir + "/" + req.filename;
-
+                const std::string file_path = file_dir + "/" + req.filename;
                 if (!file_exists(file_path)) {
-
-                    send_error(
-                        client_socket,
-                        "file not found"
-                    );
-
+                    send_error(client_socket, "file not found");
                     close_socket(client_socket);
                     continue;
                 }
-
                 try {
-                    req.total_bytes =
-                        static_cast<std::uint64_t>(
-                            get_file_size(file_path)
-                        );
-                }
-                catch (const std::exception&) {
-
-                    send_error(
-                        client_socket,
-                        "cannot determine file size"
+                    req.total_bytes = static_cast<std::uint64_t>(
+                        get_file_size(file_path)
                     );
-
+                } catch (const std::exception&) {
+                    send_error(client_socket, "cannot determine file size");
                     close_socket(client_socket);
                     continue;
                 }
             }
 
-
-            // ------------------------------------------------
-            // PUT
-            // ------------------------------------------------
-            // For PUT, total_bytes was already parsed from:
-            //
-            // PUT <filename> <bytes>
-            //
-            // so no additional size calculation is required.
-
-
-            // ------------------------------------------------
-            // Queue the request
-            // ------------------------------------------------
-
-            // A18: arrival is recorded after the request has been
-            // fully parsed and is ready to be admitted to the queue.
-            req.arrival_ns =
-                static_cast<std::uint64_t>(
-                    std::chrono::duration_cast<
-                        std::chrono::nanoseconds
-                    >(
-                        std::chrono::steady_clock::now()
-                            .time_since_epoch()
-                    ).count()
-                );
+            req.request_id = next_request_id.fetch_add(1);
+            req.arrival_ns = monotonic_ns();
 
             if (!request_queue.push(req)) {
-
-                send_error(
-                    client_socket,
-                    "server shutting down"
-                );
-
+                send_error(client_socket, "server shutting down");
                 close_socket(client_socket);
-                continue;
             }
-
-            std::cout
-                << "  queued request "
-                << req.request_id
-                << std::endl;
-
+        } catch (const std::exception& e) {
+            send_error(client_socket, e.what());
+            close_socket(client_socket);
         }
-        catch (const std::exception& e) {
+    }
+}
 
-            std::cerr
-                << "Error parsing request: "
-                << e.what()
-                << std::endl;
-
-            send_error(
-                client_socket,
-                e.what()
-            );
-
+void acceptor_thread(int listen_socket, FdQueue& fd_queue)
+{
+    while (!shutdown_flag) {
+        const int client_socket = accept_connection(listen_socket);
+        if (client_socket < 0) {
+            if (shutdown_flag) {
+                break;
+            }
+            continue;
+        }
+        if (!fd_queue.push(client_socket)) {
             close_socket(client_socket);
         }
     }
 
-    // Wake workers and tell them no more requests
-    // will be accepted.
-    request_queue.close();
-
-    std::cout
-        << "Acceptor stopped."
-        << std::endl;
+    fd_queue.close();
 }
 
-
-// ------------------------------------------------------------
-// Worker thread
-// ------------------------------------------------------------
 void worker_thread(
-    int worker_id,
     const std::string& file_dir,
     RequestQueue& request_queue,
     Scheduler& scheduler,
-    std::mutex& scheduler_mutex,
-    const std::string& metrics_out,
+    Metrics& metrics,
     int packetization)
 {
-    // Scheduler operations are safe here because RequestQueue
-    // provides its own synchronization and Scheduler only updates
-    // the Request object being processed.
-    (void)scheduler_mutex;
-
     while (true) {
-
         ScheduleDecision decision = scheduler.next(request_queue);
-
         if (!decision.valid) {
             break;
         }
 
         Request req = std::move(decision.request);
-
-        // Record start time only when the worker first picks up
-        // this request. RR/DRR rounds must not overwrite it.
         if (req.start_ns == 0) {
-            req.start_ns =
-                static_cast<std::uint64_t>(
-                    std::chrono::duration_cast<
-                        std::chrono::nanoseconds
-                    >(
-                        std::chrono::steady_clock::now()
-                            .time_since_epoch()
-                    ).count()
-                );
+            req.start_ns = monotonic_ns();
         }
-
-        std::cout
-            << "Worker "
-            << worker_id
-            << " processing request "
-            << req.request_id
-            << " ("
-            << operation_name(req.op)
-            << ", budget="
-            << decision.budget
-            << ")"
-            << std::endl;
 
         std::uint64_t bytes_processed = 0;
         bool success = false;
 
         if (req.op == Operation::GET) {
-
             success = serve_get(
                 req,
                 file_dir,
@@ -345,18 +165,10 @@ void worker_thread(
                 scheduler.policy() == SchedulingPolicy::RR,
                 packetization
             );
-
-        }
-        else if (req.op == Operation::PUT) {
-
-            // PUT protocol:
-            // 1. Server acknowledges before receiving the body.
-            // 2. Body is then received according to the scheduler.
-            // 3. Final OK 0 is sent after all bytes arrive.
+        } else if (req.op == Operation::PUT) {
             if (req.offset == 0) {
                 send_response(req.client_fd, 0);
             }
-
             success = serve_put(
                 req,
                 file_dir,
@@ -366,419 +178,210 @@ void worker_thread(
         }
 
         if (!success) {
+            request_queue.complete();
             close_socket(req.client_fd);
             continue;
         }
 
-        // Update the scheduler with the actual bytes processed first.
-        // This advances the request offset before deciding whether
-        // anything remains to be scheduled.
         scheduler.account(req, bytes_processed);
+        const bool requeue = scheduler.should_requeue(req);
 
-        // Check whether the request still has data remaining.
-        bool requeue = scheduler.should_requeue(req);
-
-        // RR forfeits unused allowance when a GET is preempted and
-        // requeued. DRR retains unused allowance as deficit.
-        // PUT requests always have zero forfeited bytes.
         if (requeue &&
             scheduler.policy() == SchedulingPolicy::RR &&
             req.op == Operation::GET &&
             bytes_processed < decision.budget) {
-
-            req.forfeited_bytes +=
-                decision.budget - bytes_processed;
+            req.forfeited_bytes += decision.budget - bytes_processed;
         }
 
         if (requeue) {
-
-            std::cout
-                << "Request "
-                << req.request_id
-                << " requeued at offset "
-                << req.offset
-                << "/"
-                << req.total_bytes
-                << std::endl;
-
             if (!request_queue.requeue(std::move(req))) {
-
-                std::cerr
-                    << "Failed to requeue request "
-                    << req.request_id
-                    << std::endl;
-
                 close_socket(req.client_fd);
             }
-
             continue;
         }
 
-        req.finish_ns =
-            static_cast<std::uint64_t>(
-                std::chrono::duration_cast<
-                    std::chrono::nanoseconds
-                >(
-                    std::chrono::steady_clock::now()
-                        .time_since_epoch()
-                ).count()
-            );
-
-        // PUT sends the final OK 0 only after all bytes arrive.
         if (req.op == Operation::PUT) {
             send_response(req.client_fd, 0);
         }
-
-        std::cout
-            << "Request "
-            << req.request_id
-            << " completed"
-            << std::endl;
-
-        if (!append_metric(metrics_out, req)) {
-            std::cerr
-                << "Warning: failed to write metrics for request "
-                << req.request_id
-                << std::endl;
-        }
-
+        req.finish_ns = monotonic_ns();
+        metrics.record(req);
+        request_queue.complete();
         close_socket(req.client_fd);
     }
-
-    std::cout
-        << "Worker "
-        << worker_id
-        << " stopped"
-        << std::endl;
 }
 
-// Main
-// ------------------------------------------------------------
 int main(int argc, char* argv[])
 {
     std::signal(SIGINT, handle_signal);
     std::signal(SIGTERM, handle_signal);
 
-
-    // --------------------------------------------------------
-    // Default values
-    // --------------------------------------------------------
     std::string config_path = "config.json";
     std::string sched_policy;
     std::string file_dir;
     std::string metrics_out = "metrics.csv";
-
     std::size_t quantum = 0;
     int packetization = 1;
+    bool quantum_set = false;
 
-
-    // --------------------------------------------------------
-    // Parse command line
-    // --------------------------------------------------------
     for (int i = 1; i < argc; ++i) {
+        auto need_value = [&](const char* flag) {
+            if (i + 1 >= argc) {
+                std::cerr << "error: missing value for " << flag << std::endl;
+                std::exit(1);
+            }
+        };
 
-        if (std::strcmp(argv[i], "--config") == 0 &&
-            i + 1 < argc) {
-
+        if (std::strcmp(argv[i], "--config") == 0) {
+            need_value("--config");
             config_path = argv[++i];
-        }
-
-        else if (
-            std::strcmp(argv[i], "--sched") == 0 &&
-            i + 1 < argc) {
-
+        } else if (std::strcmp(argv[i], "--sched") == 0) {
+            need_value("--sched");
             sched_policy = argv[++i];
-        }
-
-        else if (
-            std::strcmp(argv[i], "--file") == 0 &&
-            i + 1 < argc) {
-
+        } else if (std::strcmp(argv[i], "--file") == 0) {
+            need_value("--file");
             file_dir = argv[++i];
-        }
-
-        else if (
-            std::strcmp(argv[i], "--quantum") == 0 &&
-            i + 1 < argc) {
-
-            quantum = std::stoull(argv[++i]);
-        }
-
-        else if (
-            std::strcmp(argv[i], "--p") == 0 &&
-            i + 1 < argc) {
-
-            packetization = std::stoi(argv[++i]);
-        }
-
-        else if (
-            std::strcmp(argv[i], "--metrics-out") == 0 &&
-            i + 1 < argc) {
-
+        } else if (std::strcmp(argv[i], "--quantum") == 0) {
+            need_value("--quantum");
+            quantum_set = true;
+            try {
+                quantum = std::stoull(argv[++i]);
+            } catch (const std::exception&) {
+                std::cerr << "error: invalid --quantum" << std::endl;
+                return 1;
+            }
+        } else if (std::strcmp(argv[i], "--p") == 0) {
+            need_value("--p");
+            try {
+                packetization = std::stoi(argv[++i]);
+            } catch (const std::exception&) {
+                std::cerr << "error: invalid --p" << std::endl;
+                return 1;
+            }
+        } else if (std::strcmp(argv[i], "--metrics-out") == 0) {
+            need_value("--metrics-out");
             metrics_out = argv[++i];
-        }
-
-        else {
-            std::cerr
-                << "error: unknown or incomplete argument: "
-                << argv[i]
-                << std::endl;
-
+        } else {
+            std::cerr << "error: unknown or incomplete argument: "
+                      << argv[i] << std::endl;
             return 1;
         }
     }
 
-
-    // --------------------------------------------------------
-    // Validate required flags
-    // --------------------------------------------------------
     if (sched_policy.empty()) {
-
-        std::cerr
-            << "error: missing required flag '--sched'"
-            << std::endl;
-
+        std::cerr << "error: missing required flag '--sched'" << std::endl;
         return 1;
     }
-
     if (file_dir.empty()) {
-
-        std::cerr
-            << "error: missing required flag '--file'"
-            << std::endl;
-
+        std::cerr << "error: missing required flag '--file'" << std::endl;
+        return 1;
+    }
+    if (packetization <= 0) {
+        std::cerr << "error: --p must be a positive integer" << std::endl;
         return 1;
     }
 
-
-    // --------------------------------------------------------
-    // Validate scheduling policy
-    // --------------------------------------------------------
     SchedulingPolicy policy;
-
     try {
-        policy = parse_scheduling_policy(
-            sched_policy
-        );
-    }
-    catch (const std::exception& e) {
-
-        std::cerr
-            << "error: "
-            << e.what()
-            << std::endl;
-
+        policy = parse_scheduling_policy(sched_policy);
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << std::endl;
         return 1;
     }
 
-
-    // --------------------------------------------------------
-    // Validate quantum
-    // --------------------------------------------------------
-    if (
-        (sched_policy == "rr" ||
-         sched_policy == "drr") &&
-        quantum == 0
-    ) {
-
-        std::cerr
-            << "error: --quantum required for "
-            << sched_policy
-            << std::endl;
-
+    if ((sched_policy == "rr" || sched_policy == "drr") &&
+        (!quantum_set || quantum == 0)) {
+        std::cerr << "error: --quantum required for "
+                  << sched_policy << std::endl;
+        return 1;
+    }
+    if ((sched_policy == "fcfs" || sched_policy == "sjf") && quantum_set) {
+        std::cerr << "error: --quantum not allowed for "
+                  << sched_policy << std::endl;
         return 1;
     }
 
-    if (
-        (sched_policy == "fcfs" ||
-         sched_policy == "sjf") &&
-        quantum != 0
-    ) {
-
-        std::cerr
-            << "error: --quantum not allowed for "
-            << sched_policy
-            << std::endl;
-
-        return 1;
-    }
-
-
-    // --------------------------------------------------------
-    // Load configuration
-    // --------------------------------------------------------
     Config cfg;
-
     try {
-
         cfg = load_config(config_path);
-
-    }
-    catch (const std::exception& e) {
-
-        std::cerr
-            << e.what()
-            << std::endl;
-
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 
-
-    // --------------------------------------------------------
-    // Create scheduler and request queue
-    // --------------------------------------------------------
     RequestQueue request_queue;
+    FdQueue fd_queue;
+    Scheduler scheduler(policy, quantum);
+    Metrics metrics;
+    std::atomic<int> next_request_id{1};
 
-    Scheduler scheduler(
-        policy,
-        quantum
-    );
-    
-    std::mutex scheduler_mutex;
-
-    if (!write_metrics_header(metrics_out)) {
-        std::cerr
-            << "Error: could not create metrics file: "
-            << metrics_out
-            << std::endl;
-        return 1;
+    std::cout << "Starting server..." << std::endl;
+    std::cout << "Policy: " << sched_policy << std::endl;
+    std::cout << "File directory: " << file_dir << std::endl;
+    std::cout << "Threads: " << cfg.server.server_threads << std::endl;
+    if (sched_policy == "rr" || sched_policy == "drr") {
+        std::cout << "Quantum: " << quantum << " bytes" << std::endl;
     }
+    std::cout << "Metrics output: " << metrics_out << std::endl;
 
-
-    // --------------------------------------------------------
-    // Startup information
-    // --------------------------------------------------------
-    std::cout
-        << "Starting server..."
-        << std::endl;
-
-    std::cout
-        << "Policy: "
-        << sched_policy
-        << std::endl;
-
-    std::cout
-        << "File directory: "
-        << file_dir
-        << std::endl;
-
-    std::cout
-        << "Threads: "
-        << cfg.server.server_threads
-        << std::endl;
-
-    std::cout
-        << "Metrics output: "
-        << metrics_out
-        << std::endl;
-
-    std::cout
-        << "Packetization: "
-        << packetization
-        << " lines"
-        << std::endl;
-
-
-    // --------------------------------------------------------
-    // Create listening socket
-    // --------------------------------------------------------
-    int listen_socket =
-        create_listening_socket(
-            cfg.server.ip,
-            cfg.server.port
-        );
-
+    const int listen_socket =
+        create_listening_socket(cfg.server.ip, cfg.server.port);
     if (listen_socket < 0) {
-
-        std::cerr
-            << "Failed to create listening socket"
-            << std::endl;
-
+        std::cerr << "Failed to create listening socket" << std::endl;
         return 1;
     }
-
     global_listen_socket = listen_socket;
 
-
-    std::cout
-        << "Server started! Listening on "
-        << cfg.server.ip
-        << ":"
-        << cfg.server.port
-        << std::endl;
-
-
-    // --------------------------------------------------------
-    // Start worker threads
-    // --------------------------------------------------------
     std::vector<std::thread> workers;
-
-    workers.reserve(
-        cfg.server.server_threads
-    );
-
-    for (
-        int i = 0;
-        i < cfg.server.server_threads;
-        ++i
-    ) {
-
+    workers.reserve(static_cast<std::size_t>(cfg.server.server_threads));
+    for (int i = 0; i < cfg.server.server_threads; ++i) {
         workers.emplace_back(
             worker_thread,
-            i + 1,
             std::cref(file_dir),
             std::ref(request_queue),
             std::ref(scheduler),
-            std::ref(scheduler_mutex),
-            std::cref(metrics_out),
+            std::ref(metrics),
             packetization
         );
     }
 
+    const int parser_count =
+        std::max(8, cfg.server.client_threads);
+    std::vector<std::thread> parsers;
+    parsers.reserve(static_cast<std::size_t>(parser_count));
+    for (int i = 0; i < parser_count; ++i) {
+        parsers.emplace_back(
+            parser_thread,
+            std::ref(fd_queue),
+            std::ref(request_queue),
+            std::cref(file_dir),
+            std::ref(next_request_id)
+        );
+    }
 
-    // --------------------------------------------------------
-    // Start acceptor
-    // --------------------------------------------------------
-    std::cout
-        << "Waiting for connections "
-        << "(Ctrl+C to stop)..."
-        << std::endl;
-
-    std::thread acceptor(
-        acceptor_thread,
-        listen_socket,
-        std::cref(file_dir),
-        std::ref(request_queue)
-    );
-
-
-    // --------------------------------------------------------
-    // Wait for acceptor
-    // --------------------------------------------------------
+    std::thread acceptor(acceptor_thread, listen_socket, std::ref(fd_queue));
     acceptor.join();
 
+    for (std::thread& parser : parsers) {
+        if (parser.joinable()) {
+            parser.join();
+        }
+    }
 
-    // --------------------------------------------------------
-    // Wait for workers
-    // --------------------------------------------------------
+    request_queue.close();
+
     for (std::thread& worker : workers) {
-
         if (worker.joinable()) {
             worker.join();
         }
     }
 
+    metrics.print_summary();
+    if (!metrics.write_csv(metrics_out)) {
+        std::cerr << "error: failed to write " << metrics_out << std::endl;
+    }
 
-    // --------------------------------------------------------
-    // Shutdown
-    // --------------------------------------------------------
     close_socket(listen_socket);
-
     global_listen_socket = -1;
-
-    std::cout
-        << "Server shutdown complete."
-        << std::endl;
-
+    std::cout << "Server shutdown complete." << std::endl;
     return 0;
 }

@@ -1,6 +1,7 @@
 #include <chrono>
 #include "socket.h"
 #include <iostream>
+#include <vector>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -92,18 +93,21 @@ ssize_t recv_data_with_timeout(int socket_fd, void* buffer, size_t size, int tim
     return recv(socket_fd, buffer, size, 0);
 }
 
-std::string read_header_line(int socket_fd, int timeout_ms) {
+std::string read_header_line(
+    int socket_fd,
+    int timeout_ms,
+    std::vector<char>& leftover)
+{
+    leftover.clear();
     std::string line;
-    char buffer[1];
+    char buffer[4096];
 
-    // A5: use one overall deadline for the complete header read.
     const auto deadline =
         std::chrono::steady_clock::now() +
         std::chrono::milliseconds(timeout_ms);
 
-    while (line.size() < 1024) {
+    while (line.size() < 8192) {
         const auto now = std::chrono::steady_clock::now();
-
         if (now >= deadline) {
             return "";
         }
@@ -112,34 +116,32 @@ std::string read_header_line(int socket_fd, int timeout_ms) {
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 deadline - now
             ).count();
-
         const int remaining_ms =
             static_cast<int>(remaining > 0 ? remaining : 1);
 
-        ssize_t n =
-            recv_data_with_timeout(
-                socket_fd,
-                buffer,
-                1,
-                remaining_ms
-            );
+        const ssize_t n = recv_data_with_timeout(
+            socket_fd,
+            buffer,
+            sizeof(buffer),
+            remaining_ms
+        );
 
-        if (n < 0) {
+        if (n <= 0) {
             return "";
         }
 
-        if (n == 0) {
-            return "";
-        }
-
-        line += buffer[0];
-
-        if (buffer[0] == '\n') {
-            return line;
+        for (ssize_t i = 0; i < n; ++i) {
+            line.push_back(buffer[i]);
+            if (buffer[i] == '\n') {
+                leftover.assign(
+                    buffer + i + 1,
+                    buffer + n
+                );
+                return line;
+            }
         }
     }
 
-    // Header too long.
     return "";
 }
 
