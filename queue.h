@@ -37,6 +37,7 @@ struct Request {
 
     std::vector<char> pending_bytes;
     std::size_t pending_offset = 0;
+    std::string staging_filename;
     bool response_sent = false;
 };
 

@@ -8,6 +8,7 @@
 #include <iostream>
 #include <netinet/in.h>
 #include <random>
+#include <csignal>
 #include <string>
 #include <sys/socket.h>
 #include <thread>
@@ -398,6 +399,8 @@ void usage()
 
 int main(int argc, char* argv[])
 {
+    std::signal(SIGPIPE, SIG_IGN);
+
     std::string config_path = "config.json";
     std::string command;
     std::vector<std::string> positional;

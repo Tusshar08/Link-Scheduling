@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <fcntl.h>
+#include <csignal>
 #include <sys/select.h>
 
 int create_listening_socket(const std::string& ip, int port) {
@@ -150,7 +151,16 @@ bool send_all(int socket_fd, const void* data, size_t size) {
     size_t bytes_sent = 0;
     
     while (bytes_sent < size) {
-        ssize_t n = send(socket_fd, buffer + bytes_sent, size - bytes_sent, 0);
+        int flags = 0;
+    #ifdef MSG_NOSIGNAL
+        flags |= MSG_NOSIGNAL;
+    #endif
+        ssize_t n = send(
+            socket_fd,
+            buffer + bytes_sent,
+            size - bytes_sent,
+            flags
+        );
         
         if (n < 0) {
             perror("send");

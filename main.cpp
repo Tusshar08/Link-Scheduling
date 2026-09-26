@@ -7,8 +7,10 @@
 #include <stdexcept>
 #include <string>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <thread>
 #include <vector>
+#include <cstdio>
 
 #include "clock_ns.h"
 #include "config.h"
@@ -120,6 +122,30 @@ void parser_thread(
 void acceptor_thread(int listen_socket, FdQueue& fd_queue)
 {
     while (!shutdown_flag) {
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(listen_socket, &readfds);
+        timeval timeout{};
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000;
+
+        const int ready = select(
+            listen_socket + 1,
+            &readfds,
+            nullptr,
+            nullptr,
+            &timeout
+        );
+        if (ready == 0) {
+            continue;
+        }
+        if (ready < 0) {
+            if (shutdown_flag) {
+                break;
+            }
+            continue;
+        }
+
         const int client_socket = accept_connection(listen_socket);
         if (client_socket < 0) {
             if (shutdown_flag) {
@@ -178,6 +204,9 @@ void worker_thread(
         }
 
         if (!success) {
+            if (!req.staging_filename.empty()) {
+                std::remove((file_dir + "/" + req.staging_filename).c_str());
+            }
             request_queue.complete();
             close_socket(req.client_fd);
             continue;
@@ -201,6 +230,16 @@ void worker_thread(
         }
 
         if (req.op == Operation::PUT) {
+            const std::string staging_path =
+                file_dir + "/" + req.staging_filename;
+            const std::string final_path =
+                file_dir + "/" + req.filename;
+            if (std::rename(staging_path.c_str(), final_path.c_str()) != 0) {
+                send_error(req.client_fd, "cannot commit file");
+                request_queue.complete();
+                close_socket(req.client_fd);
+                continue;
+            }
             send_response(req.client_fd, 0);
         }
         req.finish_ns = monotonic_ns();
@@ -214,6 +253,7 @@ int main(int argc, char* argv[])
 {
     std::signal(SIGINT, handle_signal);
     std::signal(SIGTERM, handle_signal);
+    std::signal(SIGPIPE, SIG_IGN);
 
     std::string config_path = "config.json";
     std::string sched_policy;

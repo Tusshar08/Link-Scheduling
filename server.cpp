@@ -33,10 +33,7 @@ bool serve_get(
         return false;
     }
 
-    const std::uint64_t file_size =
-        static_cast<std::uint64_t>(get_file_size(filepath));
-
-    req.total_bytes = file_size;
+    const std::uint64_t file_size = req.total_bytes;
 
     // Send the GET response header only once.
     if (!req.response_sent) {
@@ -217,17 +214,27 @@ bool serve_put(
         return false;
     }
 
-    const std::string filepath = file_dir + "/" + req.filename;
-
     // A zero-byte PUT is valid.
-    if (req.total_bytes == 0) {
-        return true;
+    if (req.offset == 0) {
+        req.staging_filename =
+            req.filename + ".upload." + std::to_string(req.request_id);
     }
 
-    if (req.offset == 0) {
-        // First round: create/truncate the destination.
+    if (req.total_bytes == 0) {
         std::ofstream create_file(
-            filepath,
+            file_dir + "/" + req.staging_filename,
+            std::ios::binary | std::ios::trunc
+        );
+        return create_file.is_open();
+    }
+
+    const std::string staging_path =
+        file_dir + "/" + req.staging_filename;
+
+    if (req.offset == 0) {
+        // Stage the upload so GET never observes a partially written file.
+        std::ofstream create_file(
+            staging_path,
             std::ios::binary | std::ios::trunc
         );
 
@@ -240,7 +247,7 @@ bool serve_put(
     }
 
     std::fstream file(
-        filepath,
+        staging_path,
         std::ios::binary |
         std::ios::in |
         std::ios::out
