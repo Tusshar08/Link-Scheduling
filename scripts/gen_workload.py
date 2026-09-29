@@ -14,13 +14,13 @@ def fill_short_lines(path, nbytes, lo=60, hi=80):
     written = 0
     with open(path, "w", newline="\n") as f:
         while written < nbytes:
-            length = rng.randint(lo, hi)
+            line_length = rng.randint(lo, hi)
             remaining = nbytes - written
             if remaining <= 1:
                 f.write("\n")
                 written += 1
                 break
-            body = min(length, remaining - 1)
+            body = min(line_length - 1, remaining - 1)
             f.write(("x" * body) + "\n")
             written += body + 1
 

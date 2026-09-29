@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Python virtual environment
+.venv/
+
+# Compiled binaries
+client
+server
+
+# Runtime logs
+results/*.log
+
+# Runtime/generated metrics
+metrics.csv

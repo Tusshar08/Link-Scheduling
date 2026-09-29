@@ -24,6 +24,9 @@ struct RequestMetrics {
 
 class Metrics {
 public:
+    explicit Metrics(std::size_t skip_initial = 0)
+        : skip_remaining_(skip_initial) {}
+
     void record(const Request& request);
     std::size_t completed_requests() const;
     std::vector<RequestMetrics> snapshot() const;
@@ -33,6 +36,7 @@ public:
 private:
     mutable std::mutex mutex_;
     std::vector<RequestMetrics> records_;
+    std::size_t skip_remaining_;
 };
 
 #endif

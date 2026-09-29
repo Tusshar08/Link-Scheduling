@@ -1,0 +1,302 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 2685 >>
+stream
+BT /F1 20 Tf 0.100 0.320 0.340 rg 1 0 0 1 42.00 800.00 Tm (Link Scheduling: Part A) Tj ET
+BT /F1 9 Tf 0.350 0.390 0.400 rg 1 0 0 1 42.00 780.00 Tm (Experimental report | Q=4096 bytes | 1000 measured requests per run) Tj ET
+0.100 0.480 0.450 RG 1.30 w 42.00 768.00 m 553.00 768.00 l S
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 735.00 Tm (Setup. The workload has small \(1,024 B\), medium \(30,720 B\), large \(153,600 B\), and) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 716.00 Tm (long-line \(160,008 B; eight 20 KB lines\) files. Other lines are 60-80 B. The) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 697.00 Tm (reference configuration uses four workers and eight client threads; the single-worker) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 678.00 Tm (comparison uses one worker and eight client threads. Each run uses a closed-loop load) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 659.00 Tm (with a uniform file choice and equal GET/PUT probability. Four seed PUTs are excluded.) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 640.00 Tm () Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 631.00 Tm (Policies. FCFS serves in arrival order. SJF chooses the smallest declared transfer size) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 612.00 Tm (for either verb. RR allows Q bytes per round, rounds GET to whole lines, and discards) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 593.00 Tm (unused allowance at preemption. A GET line larger than Q is sent whole under A14.) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 574.00 Tm (DRR uses the same quantum but retains unused allowance as a per-request deficit; it) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 555.00 Tm (waits for enough accumulated deficit to send an over-quantum line and does not use A14.) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 536.00 Tm (On preemption, each request retains its transfer offset, buffered unread body bytes, and) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 517.00 Tm (DRR deficit. The CSV captures arrival, first start, completion, rounds, and forfeiture.) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 498.00 Tm () Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 489.00 Tm (Measurements were collected on the current macOS development environment. The) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 470.00 Tm (code is built with the required C++17/POSIX toolchain here; Linux execution should be) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 48.00 451.00 Tm (confirmed in the submission environment before claiming Linux runtime validation.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 4820 >>
+stream
+BT /F1 20 Tf 0.100 0.320 0.340 rg 1 0 0 1 42.00 800.00 Tm (A28: waiting and throughput) Tj ET
+BT /F1 9 Tf 0.350 0.390 0.400 rg 1 0 0 1 42.00 780.00 Tm (Nearest-rank wait percentiles; throughput over the full observation window) Tj ET
+0.100 0.480 0.450 RG 1.30 w 42.00 768.00 m 553.00 768.00 l S
+0.100 0.320 0.340 rg 55.00 706.00 470.00 29.00 re f
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 60.00 714.00 Tm (Run) Tj ET
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 160.00 714.00 Tm (N) Tj ET
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 205.00 714.00 Tm (Wait p50 ms) Tj ET
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 305.00 714.00 Tm (Wait p99 ms) Tj ET
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 405.00 714.00 Tm (Throughput req/s) Tj ET
+0.930 0.960 0.950 rg 55.00 677.00 470.00 29.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 685.00 Tm (fcfs 4t) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 160.00 685.00 Tm (1000) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 205.00 685.00 Tm (0.006) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 305.00 685.00 Tm (123.840) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 405.00 685.00 Tm (74.29) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 677.00 m 525.00 677.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 656.00 Tm (sjf 4t) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 160.00 656.00 Tm (1000) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 205.00 656.00 Tm (0.005) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 305.00 656.00 Tm (170.437) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 405.00 656.00 Tm (77.16) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 648.00 m 525.00 648.00 l S
+0.930 0.960 0.950 rg 55.00 619.00 470.00 29.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 627.00 Tm (rr 4t) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 160.00 627.00 Tm (1000) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 205.00 627.00 Tm (0.004) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 305.00 627.00 Tm (15.026) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 405.00 627.00 Tm (35.40) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 619.00 m 525.00 619.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 598.00 Tm (drr 4t) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 160.00 598.00 Tm (1000) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 205.00 598.00 Tm (0.004) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 305.00 598.00 Tm (13.827) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 405.00 598.00 Tm (43.63) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 590.00 m 525.00 590.00 l S
+0.930 0.960 0.950 rg 55.00 561.00 470.00 29.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 569.00 Tm (fcfs 1t) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 160.00 569.00 Tm (1000) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 205.00 569.00 Tm (21.845) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 305.00 569.00 Tm (277.593) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 405.00 569.00 Tm (74.60) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 561.00 m 525.00 561.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 540.00 Tm (rr 1t) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 160.00 540.00 Tm (1000) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 205.00 540.00 Tm (3.056) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 305.00 540.00 Tm (18.146) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 405.00 540.00 Tm (41.62) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 532.00 m 525.00 532.00 l S
+BT /F1 13 Tf 0.100 0.320 0.340 rg 1 0 0 1 60.00 450.00 Tm (Waiting p99) Tj ET
+BT /F1 8 Tf 0.350 0.390 0.400 rg 1 0 0 1 60.00 434.00 Tm (Log scale; milliseconds) Tj ET
+0.350 0.390 0.400 RG 0.70 w 60.00 268.00 m 530.00 268.00 l S
+0.130 0.490 0.460 rg 77.23 268.00 43.87 98.71 re f
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 74.23 371.71 Tm (123.84) Tj ET
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 62.00 253.00 Tm (fcfs 4t) Tj ET
+0.130 0.490 0.460 rg 155.57 268.00 43.87 109.65 re f
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 152.57 382.65 Tm (170.44) Tj ET
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 140.33 253.00 Tm (sjf 4t) Tj ET
+0.130 0.490 0.460 rg 233.90 268.00 43.87 26.50 re f
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 230.90 299.50 Tm (15.03) Tj ET
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 218.67 253.00 Tm (rr 4t) Tj ET
+0.130 0.490 0.460 rg 312.23 268.00 43.87 23.65 re f
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 309.23 296.65 Tm (13.83) Tj ET
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 297.00 253.00 Tm (drr 4t) Tj ET
+0.130 0.490 0.460 rg 390.57 268.00 43.87 126.35 re f
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 387.57 399.35 Tm (277.59) Tj ET
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 375.33 253.00 Tm (fcfs 1t) Tj ET
+0.130 0.490 0.460 rg 468.90 268.00 43.87 32.96 re f
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 465.90 305.96 Tm (18.15) Tj ET
+BT /F1 7 Tf 0.120 0.160 0.180 rg 1 0 0 1 453.67 253.00 Tm (rr 1t) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 8458 >>
+stream
+BT /F1 20 Tf 0.100 0.320 0.340 rg 1 0 0 1 42.00 800.00 Tm (A21: normalized slowdown) Tj ET
+BT /F1 9 Tf 0.350 0.390 0.400 rg 1 0 0 1 42.00 780.00 Tm (Reference configuration \(4 workers\); response / bytes in ns/byte) Tj ET
+0.100 0.480 0.450 RG 1.30 w 42.00 768.00 m 553.00 768.00 l S
+0.100 0.320 0.340 rg 55.00 707.00 490.00 28.00 re f
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 60.00 715.00 Tm (Policy) Tj ET
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 150.00 715.00 Tm (Class) Tj ET
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 250.00 715.00 Tm (N) Tj ET
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 300.00 715.00 Tm (Median ns/B) Tj ET
+BT /F1 8 Tf 1.000 1.000 1.000 rg 1 0 0 1 425.00 715.00 Tm (p99 ns/B) Tj ET
+0.930 0.960 0.950 rg 55.00 679.00 490.00 28.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 687.00 Tm (FCFS) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 687.00 Tm (small) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 687.00 Tm (242) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 687.00 Tm (520.51) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 687.00 Tm (137711.91) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 679.00 m 545.00 679.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 659.00 Tm (FCFS) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 659.00 Tm (medium) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 659.00 Tm (271) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 659.00 Tm (310.90) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 659.00 Tm (7089.55) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 651.00 m 545.00 651.00 l S
+0.930 0.960 0.950 rg 55.00 623.00 490.00 28.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 631.00 Tm (FCFS) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 631.00 Tm (large) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 631.00 Tm (240) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 631.00 Tm (519.81) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 631.00 Tm (2526.09) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 623.00 m 545.00 623.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 603.00 Tm (FCFS) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 603.00 Tm (longline) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 603.00 Tm (247) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 603.00 Tm (5.62) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 603.00 Tm (788.02) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 595.00 m 545.00 595.00 l S
+0.930 0.960 0.950 rg 55.00 567.00 490.00 28.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 575.00 Tm (SJF) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 575.00 Tm (small) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 575.00 Tm (253) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 575.00 Tm (349.61) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 575.00 Tm (36917.97) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 567.00 m 545.00 567.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 547.00 Tm (SJF) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 547.00 Tm (medium) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 547.00 Tm (238) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 547.00 Tm (306.74) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 547.00 Tm (7422.88) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 539.00 m 545.00 539.00 l S
+0.930 0.960 0.950 rg 55.00 511.00 490.00 28.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 519.00 Tm (SJF) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 519.00 Tm (large) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 519.00 Tm (259) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 519.00 Tm (486.71) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 519.00 Tm (2322.77) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 511.00 m 545.00 511.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 491.00 Tm (SJF) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 491.00 Tm (longline) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 491.00 Tm (250) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 491.00 Tm (4.95) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 491.00 Tm (1050.38) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 483.00 m 545.00 483.00 l S
+0.930 0.960 0.950 rg 55.00 455.00 490.00 28.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 463.00 Tm (RR) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 463.00 Tm (small) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 463.00 Tm (222) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 463.00 Tm (1186.52) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 463.00 Tm (16079.10) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 455.00 m 545.00 455.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 435.00 Tm (RR) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 435.00 Tm (medium) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 435.00 Tm (250) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 435.00 Tm (1217.87) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 435.00 Tm (8240.27) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 427.00 m 545.00 427.00 l S
+0.930 0.960 0.950 rg 55.00 399.00 490.00 28.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 407.00 Tm (RR) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 407.00 Tm (large) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 407.00 Tm (259) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 407.00 Tm (1956.62) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 407.00 Tm (7001.94) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 399.00 m 545.00 399.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 379.00 Tm (RR) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 379.00 Tm (longline) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 379.00 Tm (269) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 379.00 Tm (26.15) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 379.00 Tm (2307.88) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 371.00 m 545.00 371.00 l S
+0.930 0.960 0.950 rg 55.00 343.00 490.00 28.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 351.00 Tm (DRR) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 351.00 Tm (small) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 351.00 Tm (270) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 351.00 Tm (409.18) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 351.00 Tm (14675.78) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 343.00 m 545.00 343.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 323.00 Tm (DRR) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 323.00 Tm (medium) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 323.00 Tm (240) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 323.00 Tm (643.07) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 323.00 Tm (6211.95) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 315.00 m 545.00 315.00 l S
+0.930 0.960 0.950 rg 55.00 287.00 490.00 28.00 re f
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 295.00 Tm (DRR) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 295.00 Tm (large) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 295.00 Tm (232) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 295.00 Tm (1155.20) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 295.00 Tm (5947.58) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 287.00 m 545.00 287.00 l S
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 60.00 267.00 Tm (DRR) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 150.00 267.00 Tm (longline) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 250.00 267.00 Tm (258) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 300.00 267.00 Tm (38.35) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 425.00 267.00 Tm (2145.25) Tj ET
+0.820 0.860 0.850 RG 0.40 w 55.00 259.00 m 545.00 259.00 l S
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 55.00 290.00 Tm (Interpretation: small transfers can be penalized when they wait behind large FCFS work.) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 55.00 273.00 Tm (SJF improves typical small-request slowdown, but its high tail wait reflects starvation risk) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 55.00 256.00 Tm (for large requests under a sustained stream of shorter work. RR/DRR reduce queue-wait tails) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 55.00 239.00 Tm (by sharing service, at a throughput/completion-time cost visible in these single runs.) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 2960 >>
+stream
+BT /F1 20 Tf 0.100 0.320 0.340 rg 1 0 0 1 42.00 800.00 Tm (A29: RR versus DRR) Tj ET
+BT /F1 9 Tf 0.350 0.390 0.400 rg 1 0 0 1 42.00 780.00 Tm (Per-class forfeited bytes and long-line slowdown) Tj ET
+0.100 0.480 0.450 RG 1.30 w 42.00 768.00 m 553.00 768.00 l S
+0.100 0.320 0.340 rg 65.00 704.00 470.00 31.00 re f
+BT /F1 9 Tf 1.000 1.000 1.000 rg 1 0 0 1 70.00 712.00 Tm (Size class) Tj ET
+BT /F1 9 Tf 1.000 1.000 1.000 rg 1 0 0 1 220.00 712.00 Tm (RR forfeited bytes) Tj ET
+BT /F1 9 Tf 1.000 1.000 1.000 rg 1 0 0 1 380.00 712.00 Tm (DRR forfeited bytes) Tj ET
+0.930 0.960 0.950 rg 65.00 673.00 470.00 31.00 re f
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 70.00 681.00 Tm (small) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 220.00 681.00 Tm (0) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 380.00 681.00 Tm (0) Tj ET
+0.820 0.860 0.850 RG 0.40 w 65.00 673.00 m 535.00 673.00 l S
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 70.00 650.00 Tm (medium) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 220.00 650.00 Tm (24898) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 380.00 650.00 Tm (0) Tj ET
+0.820 0.860 0.850 RG 0.40 w 65.00 642.00 m 535.00 642.00 l S
+0.930 0.960 0.950 rg 65.00 611.00 470.00 31.00 re f
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 70.00 619.00 Tm (large) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 220.00 619.00 Tm (147744) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 380.00 619.00 Tm (0) Tj ET
+0.820 0.860 0.850 RG 0.40 w 65.00 611.00 m 535.00 611.00 l S
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 70.00 588.00 Tm (longline) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 220.00 588.00 Tm (0) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 380.00 588.00 Tm (0) Tj ET
+0.820 0.860 0.850 RG 0.40 w 65.00 580.00 m 535.00 580.00 l S
+BT /F1 11 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 555.00 Tm (RR A14 events: 1072; DRR A14 events: 0.) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 525.00 Tm (Long-line median slowdown: RR 26.15 ns/B;) Tj ET
+BT /F1 10 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 507.00 Tm (DRR 38.35 ns/B.) Tj ET
+BT /F1 8 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 465.00 Tm (RR forfeited 24,898 medium and 147,744 large bytes; long-line forfeiture was 0.) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 448.00 Tm (Short-line rounds leave unusable quantum tails. Here each 20,001-byte line exceeds Q,) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 431.00 Tm (so RR sends it whole under A14 rather than forfeiting that round. DRR forfeits no bytes;) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 414.00 Tm (it carries short-line remainder and waits until deficit covers a long line \(up to five) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 397.00 Tm (rounds here\). The measured long-line slowdown reflects this wait. Results are single runs.) Tj ET
+BT /F1 9 Tf 0.120 0.160 0.180 rg 1 0 0 1 65.00 345.00 Tm (A14 is counted from per-request GET line sends by the server and preserved in each run log.) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000140 00000 n 
+0000000210 00000 n 
+0000002947 00000 n 
+0000003073 00000 n 
+0000007945 00000 n 
+0000008071 00000 n 
+0000016581 00000 n 
+0000016707 00000 n 
+0000019720 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+19848
+%%EOF

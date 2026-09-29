@@ -22,6 +22,10 @@ void Metrics::record(const Request& request)
     metrics.a14_events = request.a14_events;
 
     std::lock_guard<std::mutex> lock(mutex_);
+    if (skip_remaining_ > 0) {
+        --skip_remaining_;
+        return;
+    }
     records_.push_back(std::move(metrics));
 }
 

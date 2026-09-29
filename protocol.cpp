@@ -10,6 +10,16 @@
 
 Request parse_request_header(const std::string& header_line, int client_fd)
 {
+    // A bare newline is the HEALTH request.
+    if (header_line == "\n" || header_line == "\r\n") {
+        Request request;
+        request.client_fd = client_fd;
+        request.op = Operation::HEALTH;
+        request.filename.clear();
+        request.total_bytes = 0;
+        return request;
+    }
+
     std::string line = header_line;
 
     while (!line.empty() &&

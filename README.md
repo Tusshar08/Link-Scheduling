@@ -1,123 +1,131 @@
 # Link Scheduling (Part A)
 
-Multithreaded TCP file server with FCFS, SJF, RR, and DRR scheduling, plus a closed-loop load client. Built with `g++ -std=c++17 -pthread`. No external libraries.
+A multithreaded C++17 TCP text-file server and client implementing FCFS, SJF, round robin (RR), and deficit round robin (DRR). The server admits requests to a shared queue before workers serve them. It uses POSIX sockets and threads; no external networking or concurrency libraries are required.
 
-## Build
+## Build and Run
 
-```bash
+Build with the system C++ compiler:
+
+```sh
 make
+```
+
+Generate the assignment workload:
+
+```sh
 make workload
 ```
 
-Binaries: `./server`, `./client`. Workload files: `workload/`.
+Start a server (FCFS example):
 
-## Config (`config.json`)
+```sh
+./server --sched fcfs --file workload --config config.json --metrics-out metrics.csv
+```
 
-Every `server` field is required:
+RR and DRR require a byte quantum. FCFS and SJF reject `--quantum`:
+
+```sh
+./server --sched rr --quantum 4096 --file workload --config config.json --metrics-out metrics.csv
+```
+
+Stop with SIGINT or SIGTERM. The server stops accepting, drains admitted requests and their requeues, prints a summary, and writes the per-request CSV.
+
+## Configuration
+
+`config.json` contains the required `server` object:
 
 | Field | Meaning |
 |---|---|
-| `server.ip` | Bind / connect address |
-| `server.port` | Bind / connect port |
-| `server.server_threads` | Worker threads that drain the scheduler queue |
-| `server.client_threads` | Concurrent closed-loop threads used by `./client load` |
+| `server.ip` | Address the server binds to and the client connects to |
+| `server.port` | TCP port for the server |
+| `server.server_threads` | Number of worker threads draining the scheduling queue |
+| `server.client_threads` | Number of concurrent closed-loop threads used by the load client |
 
-`config_1thread.json` is the A28 1-worker config (same client thread count). A
-`load_balancer` block is optional for Part A; when present, its `ip`, `port`,
-`health_interval_ms`, and exactly four `backends` entries are validated.
+`config_1thread.json` is the A28 configuration with one server worker and eight client threads. Missing fields, incorrect types, malformed JSON, and invalid values are reported as errors. The project does not implement Part B's load balancer.
 
-Missing or mistyped fields exit non-zero, e.g. `error: missing required field 'server.port'`.
+## Command-Line Interface
 
-## Server flags
+Server:
 
-```bash
-./server --sched <fcfs|sjf|rr|drr> --file <dir> [--quantum Q] [--p N] \
-         [--config path] [--metrics-out path]
+```sh
+./server --sched <fcfs|sjf|rr|drr> --file <directory> [--quantum Q] [--p N] [--config path] [--metrics-out path]
 ```
 
-- `--sched` required.
-- `--file` required: directory the server serves and stores into.
-- `--quantum Q` required for `rr`/`drr`, rejected for `fcfs`/`sjf`. `Q` is a **byte** allowance per round.
-- `--p N` optional; groups up to N whole GET lines per `send`. Default 1. Does not change bytes, order, or quantum accounting.
-- `--config` default `config.json`.
-- `--metrics-out` default `metrics.csv`. Written on shutdown.
+`--sched` and `--file` are required. `--quantum Q` is required for RR/DRR and is their per-round byte allowance. `--p N` defaults to 1 and groups up to N whole GET lines into one write operation; it does not change bytes, order, or scheduling accounting. `--config` defaults to `config.json`; `--metrics-out` defaults to `metrics.csv`.
 
-SIGINT/SIGTERM: stop accepting, finish admitted requests (including RR/DRR requeues), print an aggregate summary, write the CSV. The listen socket uses `SO_REUSEADDR`.
+The experiment harness uses `--metrics-skip N` to omit the initial N completed requests from metrics. Since the load client seeds the server sequentially before measured requests begin, the harness sets N to the number of workload files. Do not use this option for ordinary standalone runs unless intentionally excluding initial transfers.
 
-## Client
+Client:
 
-The server address always comes from the config file.
-
-```bash
+```sh
 ./client [--config path] put <local-path>
-./client [--config path] get <name>
-./client [--config path] load <workload-dir> --requests N
+./client [--config path] get <server-filename>
+./client [--config path] load <workload-directory> --requests N
 ```
 
-- `put` uploads a local file; only the **base name** is sent on the wire.
-- `get` downloads `<name>` into the current directory under that name.
-- `load` seeds the server by PUTting every file in the workload directory once (seeding is not counted), then issues `N` closed-loop requests across `client_threads` threads. Each request picks a file uniformly and GET/PUT with equal probability. `--requests` is required for `load` and rejected otherwise. The client prints no metrics.
+PUT sends only the local path's base name. GET writes the result to the current directory under the requested name. `load` first PUTs each workload file once as uncounted seeding, then issues N requests using a shared counter across `client_threads`. Each request chooses a file uniformly and chooses GET or PUT with equal probability. Each client thread waits for a complete response before issuing its next request. `--requests` is required for `load` and rejected for other operations. Load metrics are written by the server, not printed by the client.
 
-## Protocol
+## Wire Protocol
 
-Framed, one request per connection:
+Each connection carries one request. Headers are newline-terminated; transfer bodies are byte-counted. The server closes the connection after the response.
 
-- `GET <name>\n` → `OK <n>\n` + `n` bytes, or `ERR <reason>\n`
-- `PUT <name> <bytes>\n` → `OK 0\n` → body → `OK 0\n`
-- `HEALTH\n` → `OK <queue_depth>\n` (answered immediately, never queued, never in the CSV)
-
-## Architecture (A5)
-
-1. Acceptor thread: `accept()` only.
-2. Parser pool: header read with a 1s timeout, filename/size checks, HEALTH out of band, then enqueue. A silent client cannot stall admission of others.
-3. Shared queue of admitted GET/PUT requests (size known at enqueue).
-4. Worker pool: the active policy chooses the next request and a byte budget.
-
-RR/DRR requeue at the tail with offset, leftover socket bytes, rounds, forfeited bytes, and (DRR) deficit preserved. Queue depth for HEALTH is the number of admitted-but-unserved requests, including preempted ones.
-
-## Policies
-
-- **FCFS**: arrival order, one round, full remaining transfer.
-- **SJF**: smallest declared byte count (GET file size, PUT header count). No aging.
-- **RR**: at most `Q` bytes per round. GET rounds stop before a line that would exceed the remaining allowance; leftover allowance is **forfeited**. A single line longer than `Q` is sent in full (A14) so the request cannot stall. PUT takes up to `Q` bytes exactly.
-- **DRR**: same as RR except unused allowance is kept as deficit (`allowance = deficit + Q` at the start of a round). A14 is not used; a line of length `L > Q` is sent once deficit covers it.
-
-Timestamps use `CLOCK_MONOTONIC`. Waiting = start − arrival; response = finish − arrival. Throughput = `N / (max(finish) − min(arrival))`. CSV columns match A23. Percentiles are nearest-rank: `index = ceil(p/100 × N) − 1`.
-
-## Workload (A27)
-
-`scripts/gen_workload.py` writes:
-
-| File | Role |
+| Request | Successful exchange |
 |---|---|
-| `workload/small.txt` | ~1 KB, 60–80 byte lines |
-| `workload/medium.txt` | ~30 KB, 60–80 byte lines |
-| `workload/large.txt` | ~150 KB, 60–80 byte lines |
-| `workload/longline.txt` | 8 × 20 KB lines (`> Q`) |
+| `GET <name>\n` | `OK <n>\n` followed by exactly n file bytes |
+| `PUT <name> <bytes>\n` | Server sends `OK 0\n`, client sends exactly the declared bytes, server confirms with `OK 0\n` |
+| `HEALTH\n` | `OK <queue_depth>\n`; answered immediately outside the scheduling queue and omitted from metrics |
 
-Reference quantum: **4096 bytes** (in 2–16 KB so large files are preempted many times).
+Failures return `ERR <reason>\n`. Filenames containing `/`, or equal to `.` or `..`, are rejected. GET preserves blank lines and a final unterminated line. PUT bodies are opaque bytes.
 
-## Reproduce experiments (A28–A29)
+## Scheduling and Metrics
 
-```bash
-chmod +x scripts/run_part_a.sh
-N=1000 ./scripts/run_part_a.sh
-python3 scripts/analyze_metrics.py results/*.csv
+The parser pool reads and validates headers with a receive timeout before enqueueing, so request size is known at admission and a silent client cannot occupy the admission path indefinitely. HEALTH is handled out of band. Workers share one explicit request queue.
+
+- **FCFS:** serve in arrival order.
+- **SJF:** choose the smallest declared byte count for either GET or PUT. There is no aging, so starvation of large transfers is possible.
+- **RR:** serve at most Q bytes per round. GET rounds end only at whole-line boundaries; a line that does not fit in the remaining allowance is deferred, and the unused remainder is forfeited. A line longer than Q is sent whole under A14. PUT consumes up to Q bytes exactly.
+- **DRR:** use allowance `deficit + Q` and retain unused allowance for the request's next round. It does not use A14; a long line waits until accumulated deficit can cover it.
+
+On preemption, request offsets, any body bytes read beyond the header, and (for DRR) deficit are retained. GET byte counts include newline bytes. The `--p` option affects batching only.
+
+The A23 CSV header is exactly:
+
+```text
+request_id,op,filename,bytes,rounds,forfeited_bytes,arrival_ns,start_ns,finish_ns
 ```
 
-Six runs:
+Timestamps use `CLOCK_MONOTONIC`. Waiting is `start - arrival`; response is `finish - arrival`. Throughput is `N / (max(finish) - min(arrival))`. Percentiles use nearest rank, `ceil(p/100 * N) - 1`. Normalized slowdown is response divided by bytes in nanoseconds per byte.
 
-1. `fcfs`, `sjf`, `rr`, `drr` with 4 server threads / 8 client threads (`config.json`)
-2. `fcfs` and `rr` with 1 server thread (`config_1thread.json`)
+## Workload and Experiments
 
-Each run uses at least 1000 load requests (plus uncounted seeding PUTs). CSVs land in `results/`. On shutdown the server also prints waiting p50/p99, throughput, A14 events, and forfeited bytes.
+The workload generator creates four files:
 
-`--p` is not part of the required matrix.
+| File | Size and line pattern |
+|---|---|
+| `workload/small.txt` | 1,024 bytes; ordinary short lines |
+| `workload/medium.txt` | 30,720 bytes; ordinary short lines |
+| `workload/large.txt` | 153,600 bytes; ordinary short lines |
+| `workload/longline.txt` | 160,008 bytes; eight 20,001-byte lines, each longer than Q |
 
-## Design choices
+The reference quantum is **4096 bytes**. The required six-run matrix is four policies with four server workers and eight client threads, plus FCFS and RR with one server worker and eight client threads. Each run has 1000 measured requests; the four seed transfers are excluded from CSVs and summaries.
 
-- Header parsing uses a parser thread pool sized to `max(8, client_threads)` so `accept()` never blocks on `recv`.
-- After SIGINT, new admissions stop but **requeue is still allowed** so a preempted request is not dropped.
-- Bytes already read past the header line are kept on the request and consumed first on PUT (A17).
-- GET is line-oriented; PUT is an opaque byte count (A9).
-- The load client discards GET bodies (the interactive `get` command still writes them). Metrics come only from the server CSV.
+Run all six experiments, analyze the CSVs, and regenerate the figures and report:
+
+```sh
+N=1000 ./scripts/run_part_a.sh
+```
+
+The harness builds the binaries, regenerates the workload, runs the six cases, writes each CSV and server log into `results/`, and then invokes the analyzer. To analyze existing results without rerunning experiments:
+
+```sh
+python3 scripts/analyze_metrics.py results/*.csv --out-dir .
+```
+
+The analyzer uses only Python's standard library. It verifies the six expected run names, at least 1000 CSV rows per run, and the presence of each log's exact A14 count. It creates:
+
+- `part_a_summary.csv`: waiting p50/p99, throughput, A14 events, forfeited bytes, and request counts.
+- `part_a_slowdown.csv`: per-class median and p99 normalized slowdown and forfeited bytes.
+- `part_a_figures.pdf`: plots and tables for the experiment results.
+- `part_a_report.pdf`: four-page Part A experimental report.
+
+The CSVs and logs in `results/` are retained as the experiment data. The PDFs are written to the project root as requested by the assignment. `--p` is not varied in the required experiment matrix.

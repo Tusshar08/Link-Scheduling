@@ -1,5 +1,7 @@
 #include "queue.h"
 
+#include "clock_ns.h"
+
 bool RequestQueue::push(Request request)
 {
     {
@@ -7,6 +9,7 @@ bool RequestQueue::push(Request request)
         if (closed_) {
             return false;
         }
+        request.arrival_ns = monotonic_ns();
         queue_.push_back(std::move(request));
     }
     cv_.notify_one();

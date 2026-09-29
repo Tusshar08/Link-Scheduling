@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <sys/socket.h>
@@ -24,6 +26,26 @@
 
 volatile std::sig_atomic_t shutdown_flag = 0;
 int global_listen_socket = -1;
+
+bool parse_unsigned_decimal(const char* text, std::uint64_t& value)
+{
+    if (text == nullptr || *text == '\0') {
+        return false;
+    }
+    for (const unsigned char* cursor =
+             reinterpret_cast<const unsigned char*>(text);
+         *cursor != '\0'; ++cursor) {
+        if (!std::isdigit(*cursor)) {
+            return false;
+        }
+    }
+    try {
+        value = std::stoull(text);
+    } catch (const std::exception&) {
+        return false;
+    }
+    return true;
+}
 
 void handle_signal(int signal)
 {
@@ -106,7 +128,6 @@ void parser_thread(
             }
 
             req.request_id = next_request_id.fetch_add(1);
-            req.arrival_ns = monotonic_ns();
 
             if (!request_queue.push(req)) {
                 send_error(client_socket, "server shutting down");
@@ -212,6 +233,9 @@ void worker_thread(
             continue;
         }
 
+        if (bytes_processed >= req.total_bytes - req.offset) {
+            req.finish_ns = monotonic_ns();
+        }
         scheduler.account(req, bytes_processed);
         const bool requeue = scheduler.should_requeue(req);
 
@@ -242,7 +266,6 @@ void worker_thread(
             }
             send_response(req.client_fd, 0);
         }
-        req.finish_ns = monotonic_ns();
         metrics.record(req);
         request_queue.complete();
         close_socket(req.client_fd);
@@ -260,6 +283,7 @@ int main(int argc, char* argv[])
     std::string file_dir;
     std::string metrics_out = "metrics.csv";
     std::size_t quantum = 0;
+    std::size_t metrics_skip = 0;
     int packetization = 1;
     bool quantum_set = false;
 
@@ -283,23 +307,35 @@ int main(int argc, char* argv[])
         } else if (std::strcmp(argv[i], "--quantum") == 0) {
             need_value("--quantum");
             quantum_set = true;
-            try {
-                quantum = std::stoull(argv[++i]);
-            } catch (const std::exception&) {
+            std::uint64_t parsed = 0;
+            if (!parse_unsigned_decimal(argv[++i], parsed) || parsed == 0 ||
+                parsed > std::numeric_limits<std::size_t>::max()) {
                 std::cerr << "error: invalid --quantum" << std::endl;
                 return 1;
             }
+            quantum = static_cast<std::size_t>(parsed);
         } else if (std::strcmp(argv[i], "--p") == 0) {
             need_value("--p");
-            try {
-                packetization = std::stoi(argv[++i]);
-            } catch (const std::exception&) {
+            std::uint64_t parsed = 0;
+            if (!parse_unsigned_decimal(argv[++i], parsed) || parsed == 0 ||
+                parsed > static_cast<std::uint64_t>(
+                    std::numeric_limits<int>::max())) {
                 std::cerr << "error: invalid --p" << std::endl;
                 return 1;
             }
+            packetization = static_cast<int>(parsed);
         } else if (std::strcmp(argv[i], "--metrics-out") == 0) {
             need_value("--metrics-out");
             metrics_out = argv[++i];
+        } else if (std::strcmp(argv[i], "--metrics-skip") == 0) {
+            need_value("--metrics-skip");
+            std::uint64_t parsed = 0;
+            if (!parse_unsigned_decimal(argv[++i], parsed) ||
+                parsed > std::numeric_limits<std::size_t>::max()) {
+                std::cerr << "error: invalid --metrics-skip" << std::endl;
+                return 1;
+            }
+            metrics_skip = static_cast<std::size_t>(parsed);
         } else {
             std::cerr << "error: unknown or incomplete argument: "
                       << argv[i] << std::endl;
@@ -351,7 +387,7 @@ int main(int argc, char* argv[])
     RequestQueue request_queue;
     FdQueue fd_queue;
     Scheduler scheduler(policy, quantum);
-    Metrics metrics;
+    Metrics metrics(metrics_skip);
     std::atomic<int> next_request_id{1};
 
     std::cout << "Starting server..." << std::endl;

@@ -24,7 +24,7 @@ bool is_path_safe(const std::string& filename) {
 
 bool file_exists(const std::string& filepath) {
     struct stat buffer;
-    return (stat(filepath.c_str(), &buffer) == 0);
+    return stat(filepath.c_str(), &buffer) == 0 && S_ISREG(buffer.st_mode);
 }
 
 size_t get_file_size(const std::string& filepath) {

@@ -1,11 +1,13 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include <atomic>
+#include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <netinet/in.h>
 #include <random>
 #include <csignal>
@@ -19,6 +21,32 @@
 #include "socket.h"
 
 namespace fs = std::filesystem;
+
+bool parse_positive_int(const char* text, int& value)
+{
+    if (text == nullptr || *text == '\0') {
+        return false;
+    }
+    for (const unsigned char* cursor =
+             reinterpret_cast<const unsigned char*>(text);
+         *cursor != '\0'; ++cursor) {
+        if (!std::isdigit(*cursor)) {
+            return false;
+        }
+    }
+    try {
+        const unsigned long long parsed = std::stoull(text);
+        if (parsed == 0 || parsed >
+                static_cast<unsigned long long>(
+                    std::numeric_limits<int>::max())) {
+            return false;
+        }
+        value = static_cast<int>(parsed);
+    } catch (const std::exception&) {
+        return false;
+    }
+    return true;
+}
 
 bool send_all_str(int sock, const std::string& data)
 {
@@ -419,9 +447,7 @@ int main(int argc, char* argv[])
                 std::cerr << "error: missing value for --requests\n";
                 return 1;
             }
-            try {
-                requests = std::stoi(argv[++i]);
-            } catch (...) {
+            if (!parse_positive_int(argv[++i], requests)) {
                 std::cerr << "error: invalid --requests\n";
                 return 1;
             }

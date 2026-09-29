@@ -25,7 +25,7 @@ bool read_file_line(
 // Write data to file
 bool write_file_data(const std::string& filepath, const std::vector<uint8_t>& data);
 
-// Check if file exists
+// Check if a regular file exists
 bool file_exists(const std::string& filepath);
 
 // Validate filename safety

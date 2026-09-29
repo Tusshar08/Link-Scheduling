@@ -225,7 +225,11 @@ bool serve_put(
             file_dir + "/" + req.staging_filename,
             std::ios::binary | std::ios::trunc
         );
-        return create_file.is_open();
+        if (!create_file.is_open()) {
+            send_error(req.client_fd, "cannot create file");
+            return false;
+        }
+        return true;
     }
 
     const std::string staging_path =
