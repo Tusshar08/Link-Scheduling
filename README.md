@@ -2,12 +2,55 @@
 
 A multithreaded C++17 TCP text-file server and client implementing FCFS, SJF, round robin (RR), and deficit round robin (DRR). The server admits requests to a shared queue before workers serve them. It uses POSIX sockets and threads; no external networking or concurrency libraries are required.
 
+> Assignment 2 (Part A) for *Advanced Computer Networks* (COL724), IIT Delhi.
+
+## Results at a glance
+
+1000 measured requests per run, quantum Q = 4096 bytes, 8 client threads (from [`report/part_a_summary.csv`](report/part_a_summary.csv)):
+
+| Policy | Server threads | Waiting p50 (ms) | Waiting p99 (ms) | Throughput (req/s) |
+|---|---|---|---|---|
+| FCFS | 4 | 0.006 | 123.84 | 74.3 |
+| SJF | 4 | 0.005 | 170.44 | 77.2 |
+| RR | 4 | 0.004 | 15.03 | 35.4 |
+| DRR | 4 | 0.004 | 13.83 | 43.6 |
+| FCFS | 1 | 21.845 | 277.59 | 74.6 |
+| RR | 1 | 3.056 | 18.15 | 41.6 |
+
+RR and DRR cut tail waiting time by roughly an order of magnitude, at the cost of throughput. The full analysis is in [`report/part_a_report.pdf`](report/part_a_report.pdf).
+
+## Project structure
+
+```
+.
+├── src/                  # Server, client, scheduler, queue, protocol, metrics
+├── tests/
+│   └── test_config.cpp   # Config loader smoke test
+├── scripts/
+│   ├── gen_workload.py   # Generates workload/
+│   ├── run_part_a.sh     # Runs the six-experiment matrix
+│   └── analyze_metrics.py
+├── workload/             # Generated request files
+├── results/              # Per-run metrics CSVs
+├── report/               # Summary CSVs, figures and report (PDF)
+├── config.json           # 4 server threads / 8 client threads
+├── config_1thread.json   # 1 server thread / 8 client threads
+└── Makefile
+```
+
+## Requirements
+
+- Linux (or WSL), since the code uses POSIX sockets and pthreads
+- `g++` with C++17 support, `make`
+- Python 3 (standard library only) for the scripts
+
 ## Build and Run
 
 Build with the system C++ compiler:
 
 ```sh
-make
+make          # builds ./server and ./client
+make test     # builds and runs the config loader test
 ```
 
 Generate the assignment workload:
@@ -118,7 +161,7 @@ N=1000 ./scripts/run_part_a.sh
 The harness builds the binaries, regenerates the workload, runs the six cases, writes each CSV and server log into `results/`, and then invokes the analyzer. To analyze existing results without rerunning experiments:
 
 ```sh
-python3 scripts/analyze_metrics.py results/*.csv --out-dir .
+python3 scripts/analyze_metrics.py results/*.csv --out-dir report
 ```
 
 The analyzer uses only Python's standard library. It verifies the six expected run names, at least 1000 CSV rows per run, and the presence of each log's exact A14 count. It creates:
@@ -128,4 +171,4 @@ The analyzer uses only Python's standard library. It verifies the six expected r
 - `part_a_figures.pdf`: plots and tables for the experiment results.
 - `part_a_report.pdf`: four-page Part A experimental report.
 
-The CSVs and logs in `results/` are retained as the experiment data. The PDFs are written to the project root as requested by the assignment. `--p` is not varied in the required experiment matrix.
+The CSVs in `results/` are kept as the experiment data. The summaries, figures and report are written to `report/`. `--p` is not varied in the required experiment matrix.

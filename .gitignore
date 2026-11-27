@@ -13,3 +13,13 @@ results/*.log
 
 # Runtime/generated metrics
 metrics.csv
+test_config
+
+# Server storage directories and downloaded files
+files/
+srv/
+
+# OS / editor
+Thumbs.db
+.vscode/
+.idea/

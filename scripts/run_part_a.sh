@@ -80,6 +80,6 @@ run_one drr 4
 run_one fcfs 1
 run_one rr 1
 
-python3 scripts/analyze_metrics.py results/*.csv --out-dir .
+python3 scripts/analyze_metrics.py results/*.csv --out-dir report
 
 echo "All Part A runs finished. CSVs are in results/"
